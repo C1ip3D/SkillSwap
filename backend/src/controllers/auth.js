@@ -35,17 +35,17 @@ export const register = async (req, res) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Create a custom token for the user
-    const token = await firebaseAuth.createCustomToken(newUser.uid);
+    // Sign in the user using the Firebase Client SDK to get an ID token
+    const { user, idToken } = await verifyUserWithEmailPassword(email, password);
 
     res.status(201).json({
       user: {
-        id: newUser.uid,
-        name: newUser.displayName,
-        email: newUser.email,
+        id: user.uid,
+        name: user.displayName || name,
+        email: user.email,
         avatar: '',
       },
-      token,
+      token: idToken,
     });
   } catch (error) {
     res.status(400).json({ message: error.message });

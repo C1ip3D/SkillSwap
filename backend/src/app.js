@@ -16,9 +16,4 @@ app.use('/auth', authRoutes);
 app.use('/skills', skillsRoutes);
 app.use('/exchanges', exchangesRoutes);
 
-// Start server
-app.listen(config.port, () => {
-  console.log(`Server is running on port ${config.port}`);
-});
-
 export default app;

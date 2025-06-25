@@ -18,7 +18,7 @@ import { useAuth } from '../hooks/useAuth.js';
 import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -30,9 +30,21 @@ export default function Dashboard() {
   const { data: exchangeRequests, isLoading: isLoadingExchanges } = useQuery({
     queryKey: ['exchanges'],
     queryFn: exchanges.list,
+    enabled: isAuthenticated && !!token,
   });
 
-  const handleStartExchange = (skillId) => {
+  const handleStartExchange = (skill) => {
+    const skillId = skill._id || skill.id;
+    if (!skillId) {
+      toast({
+        title: 'Error',
+        description: 'Skill ID is missing. Cannot start exchange.',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+      return;
+    }
     navigate(`/exchange/${skillId}`);
   };
 
@@ -63,7 +75,7 @@ export default function Dashboard() {
             </Heading>
             <Stack spacing={4}>
               {availableSkills?.map((skill) => (
-                <Card key={skill._id}>
+                <Card key={skill._id || skill.id}>
                   <CardHeader>
                     <Heading size='sm'>{skill.title}</Heading>
                   </CardHeader>
@@ -79,7 +91,7 @@ export default function Dashboard() {
                       </Stack>
                       <Button
                         colorScheme='brand'
-                        onClick={() => handleStartExchange(skill._id)}
+                        onClick={() => handleStartExchange(skill)}
                       >
                         Start Exchange
                       </Button>
@@ -96,7 +108,7 @@ export default function Dashboard() {
             </Heading>
             <Stack spacing={4}>
               {exchangeRequests?.map((exchange) => (
-                <Card key={exchange._id}>
+                <Card key={exchange._id || exchange.id}>
                   <CardHeader>
                     <Heading size='sm'>
                       {exchange.skill.title} with {exchange.participant.name}
@@ -107,7 +119,7 @@ export default function Dashboard() {
                       <Text>{exchange.status}</Text>
                       <Button
                         colorScheme='brand'
-                        onClick={() => handleStartExchange(exchange.skill._id)}
+                        onClick={() => handleStartExchange(exchange.skill)}
                       >
                         Join Exchange
                       </Button>

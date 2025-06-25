@@ -17,7 +17,6 @@ import Profile from './pages/Profile.jsx';
 const queryClient = new QueryClient();
 
 function App() {
-  // Remove initAuth, just use useAuth for state
   useAuth();
 
   return (

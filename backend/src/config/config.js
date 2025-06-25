@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-export const config = {
+const config = {
   port: process.env.PORT || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
   jwt: {
@@ -24,3 +24,5 @@ export const config = {
     turnCredential: process.env.TURN_CREDENTIAL,
   },
 };
+
+export default config;

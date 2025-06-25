@@ -33,10 +33,10 @@ export const useAuth = create()(
       register: async (name, email, password) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await apiAuth.register(name, email, password);
+          const data = await apiAuth.register(name, email, password);
           set({
-            user: response.user,
-            token: response.token,
+            user: data.user,
+            token: data.token,
             isAuthenticated: true,
             isLoading: false,
           });

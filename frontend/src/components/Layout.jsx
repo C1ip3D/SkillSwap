@@ -21,7 +21,6 @@ import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
 
 const Links = [
-  { name: 'Home', path: '/' },
   { name: 'Dashboard', path: '/dashboard' },
   { name: 'Profile', path: '/profile' },
 ];
@@ -60,7 +59,9 @@ export default function Layout({ children }) {
             />
             <HStack spacing={8} alignItems={'center'}>
               <Box fontWeight='bold' fontSize='xl' color='brand.500'>
-                SkillSwap
+                <Link as={RouterLink} to='/' _hover={{ textDecoration: 'none' }}>
+                  SkillSwap
+                </Link>
               </Box>
               <HStack
                 as={'nav'}
@@ -142,7 +143,7 @@ export default function Layout({ children }) {
             align={{ base: 'center', md: 'center' }}
             justify={{ base: 'center', md: 'space-between' }}
           >
-            <Text>© 2024 SkillSwap. All rights reserved</Text>
+            <Text>© 2025 SkillSwap. All rights reserved</Text>
             <Stack direction={'row'} spacing={6}>
               <Link href={'#'}>Terms</Link>
               <Link href={'#'}>Privacy</Link>

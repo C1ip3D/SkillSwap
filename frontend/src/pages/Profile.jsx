@@ -19,11 +19,13 @@ import {
   FormControl,
   FormLabel,
   Textarea,
+  IconButton,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { skills } from '../lib/api.js';
 import { useAuth } from '../hooks/useAuth.js';
+import { CloseIcon } from '@chakra-ui/icons';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -62,6 +64,28 @@ export default function Profile() {
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to add skill',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    },
+  });
+
+  const deleteSkillMutation = useMutation({
+    mutationFn: (id) => skills.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-skills'] });
+      toast({
+        title: 'Skill removed',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to remove skill',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -191,24 +215,38 @@ export default function Profile() {
             <Heading size='lg'>Your Skills</Heading>
             <Stack spacing={4}>
               {userSkills?.map((skill) => (
-                <Card key={skill._id}>
+                <Card key={skill._id || skill.id} position='relative'>
                   <CardHeader>
-                    <HStack justify='space-between'>
+                    <HStack justify='space-between' align='flex-start'>
                       <Heading size='sm'>{skill.title}</Heading>
-                      <Badge colorScheme='brand'>{skill.level}</Badge>
+                      <Badge colorScheme='brand' alignSelf='flex-start'>
+                        {skill.level}
+                      </Badge>
                     </HStack>
                   </CardHeader>
-                  <CardBody>
-                    <VStack align='stretch' spacing={3}>
-                      <Text>{skill.description}</Text>
-                      <HStack>
-                        {skill.tags.map((tag) => (
-                          <Badge key={tag} colorScheme='gray'>
-                            {tag}
-                          </Badge>
-                        ))}
-                      </HStack>
-                    </VStack>
+                  <CardBody display='flex' flexDirection='column' justifyContent='center' minHeight='120px' position='relative'>
+                    <Text mb={4} width='100%' align='left'>
+                      {skill.description}
+                    </Text>
+                    <HStack spacing={2} mt={2} mb={8} justify='flex-start'>
+                      {skill.tags.map((tag) => (
+                        <Badge key={tag} colorScheme='brand'>
+                          {tag}
+                        </Badge>
+                      ))}
+                    </HStack>
+                    <IconButton
+                      aria-label='Remove skill'
+                      icon={<CloseIcon boxSize={3} />}
+                      size='xs'
+                      colorScheme='red'
+                      variant='ghost'
+                      position='absolute'
+                      bottom='8px'
+                      right='8px'
+                      onClick={() => deleteSkillMutation.mutate(skill._id || skill.id)}
+                      isLoading={deleteSkillMutation.isPending}
+                    />
                   </CardBody>
                 </Card>
               ))}

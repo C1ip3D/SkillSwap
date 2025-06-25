@@ -41,6 +41,7 @@ export default function Register() {
     }
 
     try {
+      console.log('Calling Zustand register...');
       await register(name, email, password);
       toast({
         title: 'Registration successful',

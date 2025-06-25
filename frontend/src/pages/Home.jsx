@@ -11,6 +11,7 @@ import {
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 import { FaExchangeAlt, FaVideo, FaTrophy, FaRobot } from 'react-icons/fa';
+import { useAuth } from '../hooks/useAuth.js';
 
 const Feature = ({ title, text, icon }) => {
   return (
@@ -23,6 +24,8 @@ const Feature = ({ title, text, icon }) => {
 };
 
 export default function Home() {
+  const { user, isLoading } = useAuth();
+
   return (
     <Box>
       <Container maxW='container.xl' py={20}>
@@ -40,26 +43,42 @@ export default function Home() {
             through video, audio, or text chat. Join our community of learners
             and teachers today!
           </Text>
-          <Stack direction={{ base: 'column', md: 'row' }} spacing={4}>
-            <Button
-              as={RouterLink}
-              to='/register'
-              size='lg'
-              colorScheme='brand'
-              px={8}
-            >
-              Get Started
-            </Button>
-            <Button
-              as={RouterLink}
-              to='/login'
-              size='lg'
-              variant='outline'
-              px={8}
-            >
-              Sign In
-            </Button>
-          </Stack>
+          {!isLoading && (
+            <Stack direction={{ base: 'column', md: 'row' }} spacing={4}>
+              {user ? (
+                <Button
+                  as={RouterLink}
+                  to='/dashboard'
+                  size='lg'
+                  colorScheme='brand'
+                  px={8}
+                >
+                  Go to Dashboard
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    as={RouterLink}
+                    to='/register'
+                    size='lg'
+                    colorScheme='brand'
+                    px={8}
+                  >
+                    Get Started
+                  </Button>
+                  <Button
+                    as={RouterLink}
+                    to='/login'
+                    size='lg'
+                    variant='outline'
+                    px={8}
+                  >
+                    Sign In
+                  </Button>
+                </>
+              )}
+            </Stack>
+          )}
         </Stack>
 
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={10} mt={20}>
