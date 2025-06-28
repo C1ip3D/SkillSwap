@@ -24,19 +24,25 @@ export const createSkill = async (req, res) => {
 
 export const getSkills = async (req, res) => {
   try {
+    console.log('getSkills called, user:', req.user);
     const { search, level, tags } = req.query;
-    let query = firestore.collection(SKILLS_COLLECTION);
-
-    if (level) {
-      query = query.where('level', '==', level);
-    }
-    if (tags) {
-      const tagsArray = tags.split(',');
-      query = query.where('tags', 'array-contains-any', tagsArray);
-    }
+    // Start with filtering by owner (required for data isolation)
+    let query = firestore.collection(SKILLS_COLLECTION).where('owner', '==', req.user.uid);
 
     const snapshot = await query.orderBy('createdAt', 'desc').get();
     let skills = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    // Apply additional filters in memory to avoid composite index issues
+    if (level) {
+      skills = skills.filter(skill => skill.level === level);
+    }
+    
+    if (tags) {
+      const tagsArray = tags.split(',').map(tag => tag.trim());
+      skills = skills.filter(skill => 
+        skill.tags && tagsArray.some(tag => skill.tags.includes(tag))
+      );
+    }
 
     if (search) {
       const searchLower = search.toLowerCase();
@@ -49,8 +55,10 @@ export const getSkills = async (req, res) => {
       );
     }
 
+    console.log('Returning skills:', skills);
     res.json(skills);
   } catch (error) {
+    console.error('Error in getSkills:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -109,6 +117,18 @@ export const deleteSkill = async (req, res) => {
     }
     await docRef.delete();
     res.json({ message: 'Skill deleted' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const browseSkills = async (req, res) => {
+  try {
+    const snapshot = await firestore.collection(SKILLS_COLLECTION).orderBy('createdAt', 'desc').get();
+    let skills = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Exclude current user's skills
+    skills = skills.filter(skill => skill.owner !== req.user.uid);
+    res.json(skills);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

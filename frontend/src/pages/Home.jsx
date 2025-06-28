@@ -44,7 +44,7 @@ export default function Home() {
             and teachers today!
           </Text>
           {!isLoading && (
-            <Stack direction={{ base: 'column', md: 'row' }} spacing={4}>
+          <Stack direction={{ base: 'column', md: 'row' }} spacing={4}>
               {user ? (
                 <Button
                   as={RouterLink}
@@ -57,27 +57,27 @@ export default function Home() {
                 </Button>
               ) : (
                 <>
-                  <Button
-                    as={RouterLink}
-                    to='/register'
-                    size='lg'
-                    colorScheme='brand'
-                    px={8}
-                  >
-                    Get Started
-                  </Button>
-                  <Button
-                    as={RouterLink}
-                    to='/login'
-                    size='lg'
-                    variant='outline'
-                    px={8}
-                  >
-                    Sign In
-                  </Button>
+            <Button
+              as={RouterLink}
+              to='/register'
+              size='lg'
+              colorScheme='brand'
+              px={8}
+            >
+              Get Started
+            </Button>
+            <Button
+              as={RouterLink}
+              to='/login'
+              size='lg'
+              variant='outline'
+              px={8}
+            >
+              Sign In
+            </Button>
                 </>
               )}
-            </Stack>
+          </Stack>
           )}
         </Stack>
 

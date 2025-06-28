@@ -28,10 +28,6 @@ app.use(
   })
 );
 
-// Socket.io connection handling
-io.on('connection', (socket) => {
-  // Add more socket event handlers here
-});
 
 // Basic health check route
 app.get('/health', (req, res) => {
@@ -40,5 +36,5 @@ app.get('/health', (req, res) => {
 
 // Start server
 httpServer.listen(config.port, () => {
-  // Remove: console.log(`Server is running on port ${config.port}`);
+  console.log(`Server is running on port ${config.port}`);
 });

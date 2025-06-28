@@ -59,6 +59,10 @@ export const skills = {
     const response = await api.get('/skills');
     return response.data;
   },
+  browse: async () => {
+    const response = await api.get('/skills/browse');
+    return response.data;
+  },
   create: async (data) => {
     const response = await api.post('/skills', data);
     return response.data;
@@ -88,6 +92,10 @@ export const exchanges = {
   },
   get: async (id) => {
     const response = await api.get(`/exchanges/${id}`);
+    return response.data;
+  },
+  updateStatus: async (id, status) => {
+    const response = await api.patch(`/exchanges/${id}/status`, { status });
     return response.data;
   },
   update: async (id, data) => {

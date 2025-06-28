@@ -6,16 +6,17 @@ import {
   getSkill,
   updateSkill,
   deleteSkill,
+  browseSkills,
 } from '../controllers/skills.js';
 
 const router = express.Router();
 
-// Public routes
+// Protected routes (all require auth)
+router.use(auth);
+
+router.get('/browse', browseSkills);
 router.get('/', getSkills);
 router.get('/:id', getSkill);
-
-// Protected routes
-router.use(auth);
 router.post('/', createSkill);
 router.put('/:id', updateSkill);
 router.delete('/:id', deleteSkill);

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from './hooks/useAuth.js';
 import theme from './theme.js';
 import Layout from './components/Layout.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
 
 // Pages
 import Home from './pages/Home.jsx';
@@ -29,9 +30,30 @@ function App() {
               <Route path='/' element={<Home />} />
               <Route path='/login' element={<Login />} />
               <Route path='/register' element={<Register />} />
-              <Route path='/dashboard' element={<Dashboard />} />
-              <Route path='/exchange/:skillId' element={<SkillExchange />} />
-              <Route path='/profile' element={<Profile />} />
+              <Route 
+                path='/dashboard' 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path='/exchange/:skillId' 
+                element={
+                  <ProtectedRoute>
+                    <SkillExchange />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path='/profile' 
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } 
+              />
             </Routes>
           </Layout>
         </Router>

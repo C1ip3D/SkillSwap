@@ -51,20 +51,49 @@ export const createExchange = async (req, res) => {
 
 export const getExchanges = async (req, res) => {
   try {
+    console.log('getExchanges called, user:', req.user);
     const { status } = req.query;
-    let query = firestore
+    // Outgoing requests (user is student)
+    let studentQuery = firestore
       .collection(EXCHANGES_COLLECTION)
       .where('student', '==', req.user.uid);
     if (status) {
-      query = query.where('status', '==', status);
+      studentQuery = studentQuery.where('status', '==', status);
     }
-    const snapshot = await query.orderBy('createdAt', 'desc').get();
-    const exchanges = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const studentSnapshot = await studentQuery.orderBy('createdAt', 'desc').get();
+    // Incoming requests (user is teacher)
+    let teacherQuery = firestore
+      .collection(EXCHANGES_COLLECTION)
+      .where('teacher', '==', req.user.uid);
+    if (status) {
+      teacherQuery = teacherQuery.where('status', '==', status);
+    }
+    const teacherSnapshot = await teacherQuery.orderBy('createdAt', 'desc').get();
+    // Combine and populate skill info
+    const allDocs = [...studentSnapshot.docs, ...teacherSnapshot.docs];
+    console.log('Found exchange docs:', allDocs.length);
+    const exchanges = await Promise.all(
+      allDocs.map(async (doc) => {
+        const data = doc.data();
+        let skillData = null;
+        try {
+          const skillDoc = await firestore.collection(SKILLS_COLLECTION).doc(data.skill).get();
+          if (skillDoc.exists) {
+            skillData = { id: skillDoc.id, ...skillDoc.data() };
+          }
+        } catch (e) {
+          console.error('Error fetching skill for exchange', doc.id, e);
+        }
+        return {
+          id: doc.id,
+          ...data,
+          skill: skillData,
+        };
+      })
+    );
     res.json(exchanges);
   } catch (error) {
+    console.error('Error in getExchanges:', error);
     res.status(400).json({ message: error.message });
   }
 };

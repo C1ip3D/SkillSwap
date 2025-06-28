@@ -214,6 +214,9 @@ export default function Profile() {
           <VStack spacing={6} align='stretch'>
             <Heading size='lg'>Your Skills</Heading>
             <Stack spacing={4}>
+              {userSkills && userSkills.length === 0 && (
+                <Text color='gray.500'>You don&apos;t have any skills yet.</Text>
+              )}
               {userSkills?.map((skill) => (
                 <Card key={skill._id || skill.id} position='relative'>
                   <CardHeader>

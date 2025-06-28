@@ -60,7 +60,7 @@ export default function Layout({ children }) {
             <HStack spacing={8} alignItems={'center'}>
               <Box fontWeight='bold' fontSize='xl' color='brand.500'>
                 <Link as={RouterLink} to='/' _hover={{ textDecoration: 'none' }}>
-                  SkillSwap
+                SkillSwap
                 </Link>
               </Box>
               <HStack
