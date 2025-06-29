@@ -10,7 +10,7 @@ const io = new Server(httpServer, {
   cors: {
     origin:
       process.env.NODE_ENV === 'production'
-        ? 'https://your-production-domain.com'
+        ? 'https://skillswap-frontend-kaxy.onrender.com'
         : 'http://localhost:5173',
     methods: ['GET', 'POST'],
     credentials: true,
@@ -22,7 +22,7 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === 'production'
-        ? 'https://your-production-domain.com'
+        ? 'https://skillswap-frontend-kaxy.onrender.com'
         : 'http://localhost:5173',
     credentials: true,
   })

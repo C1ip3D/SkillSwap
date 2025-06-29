@@ -10,7 +10,6 @@ const api = axios.create({
   },
 });
 
-// Add a request interceptor to add the auth token to requests
 api.interceptors.request.use(
   (config) => {
     const token = useAuth.getState().token;
@@ -24,7 +23,6 @@ api.interceptors.request.use(
   }
 );
 
-// Add a response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
