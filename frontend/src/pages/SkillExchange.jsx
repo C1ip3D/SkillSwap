@@ -58,24 +58,17 @@ export default function SkillExchange() {
     refetchInterval: 5000,
   });
 
-  // Set local video element srcObject when localStream changes
   useEffect(() => {
     if (localVideoRef.current && localStream) {
-      console.log('Setting video element srcObject', localStream);
       localVideoRef.current.srcObject = localStream;
     }
-    console.log('isVideoEnabled:', isVideoEnabled);
-  }, [localStream, isVideoEnabled]);
+  }, [localStream]);
 
-  // On mount, get webcam stream and clean up on unmount
   useEffect(() => {
     let stream;
     const getWebcam = async () => {
-      console.log('Requesting webcam...');
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        console.log('Webcam stream obtained', stream);
-        console.log('Video tracks:', stream.getVideoTracks());
         setLocalStream(stream);
         setMediaError(null);
       } catch (error) {
@@ -97,7 +90,6 @@ export default function SkillExchange() {
     };
   }, [skillId, toast]);
 
-  // Timer effect
   useEffect(() => {
     setSessionStart(Date.now());
     const interval = setInterval(() => {
@@ -109,7 +101,6 @@ export default function SkillExchange() {
     return () => clearInterval(interval);
   }, [skillId]);
 
-  // Robust screen sharing logic
   const handleScreenShare = async () => {
     if (!isScreenSharing) {
       try {
@@ -122,7 +113,6 @@ export default function SkillExchange() {
           return prev;
         });
         setIsScreenSharing(true);
-        // Replace video track in peer connection
         const videoSender = peerConnection.current?.getSenders().find((s) => s.track && s.track.kind === 'video');
         if (videoSender) {
           videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
@@ -131,7 +121,6 @@ export default function SkillExchange() {
           setIsScreenSharing(false);
           const webcamStream = await getWebcamStream();
           if (webcamStream) {
-            // Replace video track in peer connection
             const videoSender = peerConnection.current?.getSenders().find((s) => s.track && s.track.kind === 'video');
             if (videoSender) {
               videoSender.replaceTrack(webcamStream.getVideoTracks()[0]);
@@ -145,7 +134,6 @@ export default function SkillExchange() {
       setIsScreenSharing(false);
       const webcamStream = await getWebcamStream();
       if (webcamStream) {
-        // Replace video track in peer connection
         const videoSender = peerConnection.current?.getSenders().find((s) => s.track && s.track.kind === 'video');
         if (videoSender) {
           videoSender.replaceTrack(webcamStream.getVideoTracks()[0]);
@@ -154,7 +142,6 @@ export default function SkillExchange() {
     }
   };
 
-  // Update toggleAudio and toggleVideo to use localStream
   const toggleAudio = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
@@ -189,7 +176,6 @@ export default function SkillExchange() {
     }
   };
 
-  // Recording logic
   const handleRecord = () => {
     if (!isRecording) {
       const stream = localVideoRef.current?.srcObject;
@@ -223,7 +209,6 @@ export default function SkillExchange() {
         };
         recorder.start();
         setIsRecording(true);
-        // Fallback: stop recording after 10 minutes if not stopped
         setTimeout(() => {
           if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             console.warn('Auto-stopping recorder after timeout');
@@ -237,7 +222,6 @@ export default function SkillExchange() {
     }
   };
 
-  // Robustly initialize webcam stream
   const getWebcamStream = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -264,6 +248,102 @@ export default function SkillExchange() {
     }
   }, [toast]);
 
+  const setRemoteStream = (stream) => {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = stream;
+    }
+  };
+
+  useEffect(() => {
+    if (!localStream) return;
+    let remoteStream = null;
+    let isOfferCreated = false;
+    let socketInstance = null;
+
+    if (peerConnection.current) {
+      peerConnection.current.ontrack = null;
+      peerConnection.current.onicecandidate = null;
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+
+    peerConnection.current = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+
+    localStream.getTracks().forEach((track) => {
+      peerConnection.current.addTrack(track, localStream);
+    });
+
+    peerConnection.current.ontrack = (event) => {
+      if (!remoteStream) {
+        remoteStream = new MediaStream();
+        setRemoteStream(remoteStream);
+      }
+      event.streams[0].getTracks().forEach((track) => {
+        if (!remoteStream.getTracks().find((t) => t.id === track.id)) {
+          remoteStream.addTrack(track);
+        }
+      });
+    };
+
+    peerConnection.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        socketInstance.emit('ice-candidate', { candidate: event.candidate, room: skillId });
+      }
+    };
+
+    socketInstance = io(import.meta.env.VITE_WS_URL || 'http://localhost:3000', {
+      query: { skillId },
+    });
+
+    socketInstance.on('connect', () => {
+      socketInstance.emit('join-room', skillId);
+      socketInstance.emit('ready', skillId);
+    });
+
+    socketInstance.on('ready', async () => {
+      if (peerConnection.current && !isOfferCreated) {
+        isOfferCreated = true;
+        const offer = await peerConnection.current.createOffer();
+        await peerConnection.current.setLocalDescription(offer);
+        socketInstance.emit('offer', { offer, room: skillId });
+      }
+    });
+
+    socketInstance.on('offer', async ({ offer }) => {
+      if (peerConnection.current) {
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerConnection.current.createAnswer();
+        await peerConnection.current.setLocalDescription(answer);
+        socketInstance.emit('answer', { answer, room: skillId });
+      }
+    });
+
+    socketInstance.on('answer', async ({ answer }) => {
+      if (peerConnection.current) {
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+      }
+    });
+
+    socketInstance.on('ice-candidate', async ({ candidate }) => {
+      if (peerConnection.current) {
+        try {
+          await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.error('Error adding received ice candidate', e);
+        }
+      }
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.disconnect();
+      peerConnection.current?.close();
+    };
+  }, [localStream, skillId]);
+
   if (isLoading) {
     return (
       <Container maxW='container.xl' py={8}>
@@ -278,12 +358,18 @@ export default function SkillExchange() {
         <GridItem>
           <VStack spacing={4} align='stretch'>
             <Box position='relative' borderRadius='lg' overflow='hidden'>
-              {/* Main video area (placeholder) */}
-              <Box
-                as='div'
-                width='100%'
-                aspectRatio='16/9'
-                backgroundColor='#000'
+              {/* Main video area: remote video */}
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                style={{
+                  width: '100%',
+                  aspectRatio: '16/9',
+                  backgroundColor: '#000',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
               />
               {/* Local video PiP box */}
               <Box
