@@ -256,7 +256,6 @@ export default function SkillExchange() {
 
   useEffect(() => {
     if (!localStream) return;
-    let remoteStream = null;
     let isOfferCreated = false;
     let socketInstance = null;
 
@@ -275,16 +274,11 @@ export default function SkillExchange() {
       peerConnection.current.addTrack(track, localStream);
     });
 
+    // Handle remote stream (robust way)
     peerConnection.current.ontrack = (event) => {
-      if (!remoteStream) {
-        remoteStream = new MediaStream();
-        setRemoteStream(remoteStream);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
       }
-      event.streams[0].getTracks().forEach((track) => {
-        if (!remoteStream.getTracks().find((t) => t.id === track.id)) {
-          remoteStream.addTrack(track);
-        }
-      });
     };
 
     peerConnection.current.onicecandidate = (event) => {
