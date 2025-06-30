@@ -54,6 +54,7 @@ export default function SkillExchange() {
   const { data: skill, isLoading } = useQuery({
     queryKey: ['skill', skillId],
     queryFn: () => skills.get(skillId),
+    refetchInterval: 5000,
   });
 
   useEffect(() => {

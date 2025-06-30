@@ -15,10 +15,14 @@ import {
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
+import { auth } from '../lib/api.js';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
   const { login, isLoading, error, clearError } = useAuth();
@@ -45,6 +49,33 @@ export default function Login() {
         duration: 5000,
         isClosable: true,
       });
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    try {
+      await auth.forgotPassword(forgotEmail);
+      toast({
+        title: 'Password reset email sent',
+        description: 'Check your inbox for a reset link.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      setShowForgot(false);
+      setForgotEmail('');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || error.message || 'Failed to send reset email',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -103,6 +134,30 @@ export default function Login() {
                     required
                   />
                 </FormControl>
+
+                <Text fontSize='sm' color='blue.500' cursor='pointer' onClick={() => setShowForgot((v) => !v)}>
+                  Forgot Password?
+                </Text>
+                {showForgot && (
+                  <form onSubmit={handleForgotPassword}>
+                    <Stack spacing={3} mt={2} mb={2}>
+                      <Input
+                        type='email'
+                        placeholder='Enter your email'
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type='submit'
+                        colorScheme='blue'
+                        isLoading={forgotLoading}
+                      >
+                        Send Reset Email
+                      </Button>
+                    </Stack>
+                  </form>
+                )}
 
                 <Button
                   type='submit'

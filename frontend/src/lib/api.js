@@ -50,6 +50,10 @@ export const auth = {
     const response = await api.get('/auth/profile');
     return response.data;
   },
+  forgotPassword: async (email) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
 };
 
 export const skills = {

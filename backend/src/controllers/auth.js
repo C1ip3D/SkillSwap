@@ -6,7 +6,6 @@ export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user already exists in Firebase Auth
     let userRecord;
     try {
       userRecord = await firebaseAuth.getUserByEmail(email);
@@ -14,7 +13,6 @@ export const register = async (req, res) => {
         return res.status(400).json({ message: 'User already exists' });
       }
     } catch (err) {
-      // If error is not 'user-not-found', throw
       if (err.code !== 'auth/user-not-found') {
         return res.status(400).json({ message: err.message });
       }
@@ -87,6 +85,17 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     res.json(userDoc.data());
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+    await firebaseAuth.sendPasswordResetEmail(email);
+    res.json({ message: 'Password reset email sent' });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

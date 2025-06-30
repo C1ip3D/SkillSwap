@@ -31,12 +31,14 @@ export default function Dashboard() {
   const { data: availableSkills, isLoading: isLoadingSkills } = useQuery({
     queryKey: ['skills-browse'],
     queryFn: skills.browse,
+    refetchInterval: 5000,
   });
 
   const { data: exchangeRequests, isLoading: isLoadingExchanges } = useQuery({
     queryKey: ['exchanges'],
     queryFn: exchanges.list,
     enabled: isAuthenticated && !!token,
+    refetchInterval: 5000,
   });
 
   const createExchangeMutation = useMutation({
@@ -143,17 +145,8 @@ export default function Dashboard() {
   };
 
   const handleJoinExchange = (exchange) => {
-    if (exchange.status !== 'active') {
-      toast({
-        title: 'Exchange not yet accepted',
-        description: 'Wait for the skill owner to accept your request.',
-        status: 'info',
-        duration: 4000,
-        isClosable: true,
-      });
-      return;
-    }
-    navigate(`/exchange/${exchange.skill}`);
+    const skillId = exchange.skill.id;
+    navigate(`/exchange/${skillId}`);
   };
 
   // Debug: log user and exchangeRequests
@@ -163,6 +156,7 @@ export default function Dashboard() {
   // Use the correct user id property for filtering
   const userId = user?.user_id || user?.uid || user?.id;
   const incomingRequests = exchangeRequests?.filter(e => e.teacher === userId) || [];
+  console.log('incomingRequests:', incomingRequests);
   const myRequests = exchangeRequests?.filter(e => e.student === userId) || [];
 
   // Helper: check if user has already requested this skill
@@ -260,7 +254,7 @@ export default function Dashboard() {
                         <Card key={exchange.id}>
                           <CardHeader>
                             <Heading size='sm'>
-                              {skillTitle} from {exchange.studentName || 'Student'}
+                              {skillTitle} for {exchange.studentName || 'Student'}
                             </Heading>
                           </CardHeader>
                           <CardBody>
