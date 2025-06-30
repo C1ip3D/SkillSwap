@@ -13,7 +13,7 @@ import {
   Flex,
   Avatar,
 } from '@chakra-ui/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { skills } from '../lib/api.js';
@@ -50,6 +50,7 @@ export default function SkillExchange() {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  const [localStream, setLocalStream] = useState(null);
 
   const { data: skill, isLoading } = useQuery({
     queryKey: ['skill', skillId],
@@ -57,38 +58,27 @@ export default function SkillExchange() {
     refetchInterval: 5000,
   });
 
+  // Set local video element srcObject when localStream changes
   useEffect(() => {
-    // Initialize WebRTC
-    const initializeWebRTC = async () => {
+    if (localVideoRef.current && localStream) {
+      console.log('Setting video element srcObject', localStream);
+      localVideoRef.current.srcObject = localStream;
+    }
+    console.log('isVideoEnabled:', isVideoEnabled);
+  }, [localStream, isVideoEnabled]);
+
+  // On mount, get webcam stream and clean up on unmount
+  useEffect(() => {
+    let stream;
+    const getWebcam = async () => {
+      console.log('Requesting webcam...');
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-
-        // Initialize peer connection
-        peerConnection.current = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        });
-
-        // Add local stream to peer connection
-        stream.getTracks().forEach((track) => {
-          peerConnection.current?.addTrack(track, stream);
-        });
-
-        // Handle incoming stream
-        peerConnection.current.ontrack = (event) => {
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-          }
-        };
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        console.log('Webcam stream obtained', stream);
+        console.log('Video tracks:', stream.getVideoTracks());
+        setLocalStream(stream);
         setMediaError(null);
       } catch (error) {
-        console.error('Error accessing media devices:', error);
         setMediaError(error.message || 'Failed to access camera and microphone');
         toast({
           title: 'Error',
@@ -99,26 +89,11 @@ export default function SkillExchange() {
         });
       }
     };
-
-    // Initialize Socket.io connection
-    const socket = io(import.meta.env.VITE_WS_URL || 'http://localhost:3000', {
-      query: { skillId },
-    });
-
-    socket.on('connect', () => {
-      return true;
-    });
-
-    socket.on('message', (message) => {
-      setMessages((prev) => [...prev, message]);
-    });
-
-    setSocket(socket);
-    initializeWebRTC();
-
+    getWebcam();
     return () => {
-      socket.disconnect();
-      peerConnection.current?.close();
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
     };
   }, [skillId, toast]);
 
@@ -134,21 +109,69 @@ export default function SkillExchange() {
     return () => clearInterval(interval);
   }, [skillId]);
 
+  // Robust screen sharing logic
+  const handleScreenShare = async () => {
+    if (!isScreenSharing) {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        setLocalStream((prev) => {
+          if (prev && prev !== screenStream) {
+            screenStream.getTracks().forEach((track) => track.stop());
+            return screenStream;
+          }
+          return prev;
+        });
+        setIsScreenSharing(true);
+        // Replace video track in peer connection
+        const videoSender = peerConnection.current?.getSenders().find((s) => s.track && s.track.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
+        }
+        screenStream.getVideoTracks()[0].onended = async () => {
+          setIsScreenSharing(false);
+          const webcamStream = await getWebcamStream();
+          if (webcamStream) {
+            // Replace video track in peer connection
+            const videoSender = peerConnection.current?.getSenders().find((s) => s.track && s.track.kind === 'video');
+            if (videoSender) {
+              videoSender.replaceTrack(webcamStream.getVideoTracks()[0]);
+            }
+          }
+        };
+      } catch (err) {
+        toast({ title: 'Error', description: 'Screen sharing failed', status: 'error' });
+      }
+    } else {
+      setIsScreenSharing(false);
+      const webcamStream = await getWebcamStream();
+      if (webcamStream) {
+        // Replace video track in peer connection
+        const videoSender = peerConnection.current?.getSenders().find((s) => s.track && s.track.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(webcamStream.getVideoTracks()[0]);
+        }
+      }
+    }
+  };
+
+  // Update toggleAudio and toggleVideo to use localStream
   const toggleAudio = () => {
-    if (localVideoRef.current?.srcObject) {
-      const stream = localVideoRef.current.srcObject;
-      const audioTrack = stream.getAudioTracks()[0];
-      audioTrack.enabled = !audioTrack.enabled;
-      setIsAudioEnabled(audioTrack.enabled);
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsAudioEnabled(audioTrack.enabled);
+      }
     }
   };
 
   const toggleVideo = () => {
-    if (localVideoRef.current?.srcObject) {
-      const stream = localVideoRef.current.srcObject;
-      const videoTrack = stream.getVideoTracks()[0];
-      videoTrack.enabled = !videoTrack.enabled;
-      setIsVideoEnabled(videoTrack.enabled);
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsVideoEnabled(videoTrack.enabled);
+      }
     }
   };
 
@@ -163,29 +186,6 @@ export default function SkillExchange() {
       socket.emit('message', newMessage);
       setMessages((prev) => [...prev, newMessage]);
       setMessage('');
-    }
-  };
-
-  // Screen sharing logic
-  const handleScreenShare = async () => {
-    if (!isScreenSharing) {
-      try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = screenStream;
-        }
-        setIsScreenSharing(true);
-        screenStream.getVideoTracks()[0].onended = () => {
-          setIsScreenSharing(false);
-          // Revert to webcam
-          initializeWebRTC();
-        };
-      } catch (err) {
-        toast({ title: 'Error', description: 'Screen sharing failed', status: 'error' });
-      }
-    } else {
-      setIsScreenSharing(false);
-      initializeWebRTC();
     }
   };
 
@@ -237,6 +237,33 @@ export default function SkillExchange() {
     }
   };
 
+  // Robustly initialize webcam stream
+  const getWebcamStream = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setLocalStream((prev) => {
+        if (prev && prev !== stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          return stream;
+        }
+        return prev;
+      });
+      setIsScreenSharing(false);
+      setMediaError(null);
+      return stream;
+    } catch (error) {
+      setMediaError(error.message || 'Failed to access camera and microphone');
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to access camera and microphone',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return null;
+    }
+  }, [toast]);
+
   if (isLoading) {
     return (
       <Container maxW='container.xl' py={8}>
@@ -251,16 +278,14 @@ export default function SkillExchange() {
         <GridItem>
           <VStack spacing={4} align='stretch'>
             <Box position='relative' borderRadius='lg' overflow='hidden'>
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                style={{
-                  width: '100%',
-                  aspectRatio: '16/9',
-                  backgroundColor: '#000',
-                }}
+              {/* Main video area (placeholder) */}
+              <Box
+                as='div'
+                width='100%'
+                aspectRatio='16/9'
+                backgroundColor='#000'
               />
+              {/* Local video PiP box */}
               <Box
                 position='absolute'
                 bottom={4}

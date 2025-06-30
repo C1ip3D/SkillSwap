@@ -34,6 +34,27 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Add after io is created
+io.on('connection', (socket) => {
+  socket.on('join-room', (room) => {
+    socket.join(room);
+    // Optionally notify others
+    socket.to(room).emit('peer-joined');
+  });
+
+  socket.on('offer', ({ offer, room }) => {
+    socket.to(room).emit('offer', { offer });
+  });
+
+  socket.on('answer', ({ answer, room }) => {
+    socket.to(room).emit('answer', { answer });
+  });
+
+  socket.on('ice-candidate', ({ candidate, room }) => {
+    socket.to(room).emit('ice-candidate', { candidate });
+  });
+});
+
 // Start server
 httpServer.listen(config.port, () => {
   console.log(`Server is running on port ${config.port}`);
